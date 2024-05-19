@@ -1,0 +1,184 @@
+;; polls
+(defpoll ws-info :interval "0.1s"
+  `sh /home/normie/.config/eww/script/getws.sh`)
+
+(defpoll kblayout :interval "0.1s"
+  `setxkbmap -query | grep layout | sed "s/layout://g" | sed "s/ //g"`)
+
+(defpoll time :interval "1s"
+  `date +'{"hour":"%H","min":"%M","day":"%d","mon":"%m","year":"%Y"}'`)
+
+(defpoll circularvol :interval "0.1s"
+  `sh /home/normie/.config/eww/script/circularsound.sh`)
+
+
+;; variables
+(defvar clock_toggle true)
+(defvar circularvol_toggle true)
+(defvar mute_toggle true)
+(defvar lang_toggle true)
+(defvar info_toggle true)
+(defvar config_toggle true)
+
+(defwindow bar
+  :windowtype "dock"
+  :stacking "fg"
+  :wm-ignore true
+  :geometry (geometry
+              :width "100%"
+              :height "30px")
+  (box :orientation "h"
+    (content_start)
+    (content_center)
+    (content_end)))
+
+(defwidget content_start[]
+  (box :orientation "h"
+    :space-evenly false
+      :halign "start"
+    (button :width 30
+            :onclick {config_toggle ? "eww update config_toggle=false && eww open configwindow" : "eww update config_toggle=true && eww close configwindow"}
+      {config_toggle ? "" : ""})
+    (workspace)))
+
+(defwidget content_center[]
+  (box :orientation "h" :spacing 5
+      :halign "center"
+    (clock)))
+
+(defwidget content_end[]
+  (box :orientation "h" 
+    :space-evenly  "true"
+    :width 300
+      :halign "end"
+    (keyboard)
+    (battery :batlevel "${round(EWW_BATTERY["BAT0"].capacity, 0)}")
+    (volume)
+    (ram :ramlevel "${round(EWW_RAM.used_mem_perc, 0)}")
+    (cpu :cpulevel "${round(EWW_CPU.avg, 0)}")))
+
+;; widgets at the start
+(defwindow configwindow
+  :stacking "fg"
+  :windowtype "normal"
+  :wm-ignore true
+  :geometry (geometry
+              :x "0"
+              :y "0"
+              :width "100px"
+              :height "90%"
+              :anchor "center left")
+  (box :orientation "v" :spacing 5
+    (label :text "Power")
+    ))
+
+(defwidget each-ws[number]
+  (button :onclick "i3-msg workspace ${number}" {ws-info.focused == number ? "🞇" :
+    number =~  [ws-info.active] ? "🞊" : "🞅"}))
+
+(defwidget workspace[]
+  (box :orientation "h"
+    (each-ws :number 1)
+    (each-ws :number 2)
+    (each-ws :number 3)
+    (each-ws :number 4)
+    (each-ws :number 5)
+    (each-ws :number 6)
+    (each-ws :number 7)
+    (each-ws :number 8)
+    (each-ws :number 9)
+    ))
+
+;; widgets at center
+(defwidget clock[]
+  (button :onclick {clock_toggle ? "eww update clock_toggle=false && eww open calender" : "eww update clock_toggle=true && eww close calender"} 
+    {clock_toggle ? "${time.hour}:${time.min}" : "${time.mon}/${time.day} ${time.hour}:${time.min}"}))
+
+(defwindow calender
+  :stacking "fg"
+  :windowtype "normal"
+  :wm-ignore true
+  :geometry (geometry
+              :x "0%"
+              :y "30px"
+              :width "100px"
+              :height "30px"
+              :anchor "top center")
+  (calendar
+    :day "${time.day}"
+    :month "${time.mon}"
+    :year "${time.year}"))
+
+;; widgets at the end
+(defwidget keyboard[]
+    (button :onclick {lang_toggle ? "eww update lang_toggle=false && eww open kbsetting" : "eww update lang_toggle=true && eww close kbsetting"} 
+      "${kblayout}"
+      )
+    )
+
+(defwidget langcell[lang]
+  (button :onclick "setxkbmap ${lang} && eww close kbsetting && eww update lang_toggle=true"
+    :style {kblayout == lang ? "background-color: #9ccfd8; color:black;" : ""}
+    "${lang}"))
+
+(defwindow kbsetting
+  :stacking "fg"
+  :windowtype "dialog"
+  :wm-ignore false
+  :geometry (geometry
+              :x "-150px"
+              :y "30px"
+              :width "100px"
+              :height "300px"
+              :anchor "top right")
+  (box :orientation "v" :spacing 5
+    (box :orientation "h" :spacing 5
+      (langcell :lang "us")
+      (langcell :lang "de"))
+    (box :orientation "h" :spacing 5
+      (langcell :lang "ru")
+      (langcell :lang "fr"))
+    (box :orientation "h" :spacing 5
+      (langcell :lang "br")
+      (langcell :lang "ge"))
+  (input  :onaccept "sh /home/normie/.config/eww/script/langselect.sh {}")
+  ))
+
+(defwidget battery[batlevel]
+  (box :orientation "h" :spacing 5
+    (overlay
+      (circular-progress
+        :style { batlevel <= 20 ? "color:#f6c177;" :
+        batlevel <= 50 ? "color:#eb6f92;" : "color:#9ccfd8;"}
+        :thickness "3.0"
+        :value "${batlevel}")
+      (label :text "B"))))
+
+(defwidget volume[]
+  (box :orientation "h" :spacing 5
+      (overlay
+      (circular-progress
+        :style {circularvol.stat == "yes" ? "color:#6e6a86;" : "color:#9ccfd8;"}
+        :thickness "3.0"
+        :value "${circularvol.vol}")
+       (label :text "V"))))
+
+(defwidget ram[ramlevel]
+  (box :orientation "h" :spacing 5
+    (overlay
+    (circular-progress
+      :style { ramlevel >= 50 ? "color:#f6c177;" :
+              ramlevel >= 80 ? "color:#eb6f92;" : "color:#9ccfd8;"}
+      :thickness "3.0"
+      :value "${ramlevel}")
+      (label :text "R"))))
+
+(defwidget cpu[cpulevel]
+  (box :orientation "h" :spacing 5
+    (overlay
+    (circular-progress 
+      :style { cpulevel >= 50 ? "color:#f6c177;" :
+              cpulevel >= 80 ? "color:#eb6f92;" : "color:#9ccfd8;"}
+      :thickness "3.0"
+      :value "${cpulevel}")
+      (label :text "C"))))

@@ -1,0 +1,32 @@
+* {
+    all: unset; //Unsets everything so you can style everything from scratch
+}
+
+//Global Styles
+.bar {
+    background-color: #3a3a3a;
+    color: #b0b4bc;
+    padding: 10px;
+}
+
+.calender {
+    background-color: #3a3a3a;
+    border-radius: 0 0 20px 20px;
+    .selected {
+        background-color: #9ccfd8;
+    }
+}
+
+.kbsetting {
+    background-color: #3a3a3a;
+    border-radius: 0 0 20px 20px;
+}
+
+.input {
+    background-color: white;
+}
+
+.configwindow {
+    background-color: #3a3a3a;
+    border-radius: 20px;
+}
